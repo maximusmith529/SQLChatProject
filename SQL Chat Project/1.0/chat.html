@@ -1,0 +1,145 @@
+<html>
+    <head>
+        <script>
+            var selectedRoom = null;
+            function getData(sendData, callback, location)
+            {
+                var xhttp = new XMLHttpRequest();            
+                xhttp.onreadystatechange = function() {
+                    if (this.readyState == 4 && this.status == 200) {
+                        callback(JSON.parse(xhttp.responseText));                                                                                          
+                    }
+                };
+                xhttp.open("POST", location, true);
+                xhttp.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+                xhttp.send(sendData);
+            }
+            function setCookie(cname, cvalue, exhours) {
+                var d = new Date();
+                d.setTime(d.getTime() + (exhours*60*60*1000));
+                var expires = "expires="+ d.toUTCString();
+                document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+            }
+            function getCookie(cname) {
+                var name = cname + "=";
+                var decodedCookie = decodeURIComponent(document.cookie);
+                var ca = decodedCookie.split(';');
+                for(var i = 0; i <ca.length; i++) {
+                    var c = ca[i];
+                    while (c.charAt(0) == ' ') {
+                    c = c.substring(1);
+                    }
+                    if (c.indexOf(name) == 0) {
+                    return c.substring(name.length, c.length);
+                    }
+                }
+                return "";
+            }
+            function getRooms()
+            {
+                getData(
+                    "sessionToken=" + getCookie("sessionToken"),
+                    (R)=>{
+                        if(R.error)
+                        {
+                            toLogin();
+                        }
+                        else 
+                        {
+                            var roomData = "";
+                            for(var i = 0;i < R.length;i++)
+                            {
+                                if(R[i].VALID == 1)
+                                {
+                                    roomData += "<option value=\"" + R[i].ROOM_NAME + "\">" + R[i].ROOM_NAME + "</option>";                                                                
+                                }                                
+                            }                            
+                            document.getElementById("roomSelect").innerHTML = roomData;                            
+                        }                        
+                    },
+                    "getRooms.php");
+            }
+            function loadRoom(roomName)
+            {
+                
+                getData("sessionToken=" + getCookie("sessionToken") + "&roomName="+ roomName, 
+                (R)=>{
+                    if(R.error)
+                    {
+                        toLogin();
+                    }
+                    else
+                    {                        
+                        var chatData = "";
+                        chatData += "<table>";
+                        for(var i=0;i < R.length;i++)
+                        {
+                            chatData += "<tr>";
+                            chatData += "<td>" + R[i].USER_NAME + "</td>";
+                            chatData += "<td>" + R[i].MTIME + "</td>";
+                            chatData += "<td>" + R[i].MESSAGE + "</td>";
+                            chatData += "</tr>";
+                        }
+                        chatData += "</table>";
+                        document.getElementById("chat").innerHTML = chatData;
+                    }
+                }, 
+                "getAllRoomMessages.php");
+            }
+            function toLogin()
+            {
+                window.location.href = "login.html";
+            }
+            function roomSelectClick()
+            {
+                selectedRoom = document.getElementById("roomSelect").value;
+                loadRoom(selectedRoom);
+            }
+            function inputMessageClick()
+            {
+                getData(
+                    "sessionToken=" + getCookie("sessionToken") + 
+                    "&roomName=" + selectedRoom +  
+                    "&message=" + replaceEscapeSymbols(document.getElementById("inputMessage").value)
+                    ,
+                    (R)=>{
+                    },
+                    "addRoomMessage.php"
+                );
+            }
+            function replaceEscapeSymbols(data)
+            {
+                return data;
+            }
+            function tick()
+            {
+                if(selectedRoom != null)
+                {
+                    loadRoom(selectedRoom);
+                }
+            }
+            function inIt()
+            {
+                getRooms();
+                window.setInterval(tick, 1000);
+            }
+            function logoutClick()
+            {
+                setCookie("sessionToken", "", -24);
+                window.location.href = "login.html";
+            }
+        </script>
+    </head>
+    <body onload="inIt()" style="background-color:pink;">
+        <input type="button" value="logout" onclick="logoutClick()">
+        <br>
+        <input type="button" value="goto" onclick="roomSelectClick()">
+        <select id="roomSelect">
+        </select>        
+        <br/>
+        <input type="button" value="enter" onclick="inputMessageClick()">
+        <input id="inputMessage" type="text">
+        <br/>
+        <div id='chat'></div>
+    </body>
+</html>
